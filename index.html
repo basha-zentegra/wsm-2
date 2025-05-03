@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Work-schedule-management</title>
+  <link href="https://cdn.jsdelivr.net/npm/@event-calendar/build@2.3.0/event-calendar.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+  <script src=" https://js.zohostatic.com/creator/widgets/version/1.0/widgetsdk-min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+
+  <!-- poppins  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+
+
+</head>
+<body>
+<style>
+  .event-card {
+  border: 1px solid #ccc; /* Subtle border for separation */
+  border-radius: 5px; /* Slightly rounded corners */
+  padding: 10px; /* Add spacing inside the card */
+  box-shadow: none; /* Remove shadow for a cleaner look */
+  font-family: Arial, sans-serif; /* Consistent font */
+}
+
+.event-card .card-header {
+  font-weight: bold;
+  font-size: 14px;
+  color: #333; /* Neutral text color */
+  margin-bottom: 5px;
+  text-align: center; /* Center-align the header for a clean layout */
+}
+
+.event-card .card-body {
+  font-size: 12px;
+  color: #555; /* Softer color for body text */
+}
+
+.event-card .card-body p {
+  margin: 4px 0; /* Small spacing between lines */
+}
+.calendar-container {
+      margin-top: 50px;
+    }
+    .calendar-header {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+    }
+    .modal-content {
+      padding: 20px;
+    }
+    .ec-header .ec-day{
+      width: 220px !important;
+    }
+    /* .ec-time{
+      height: 40px !important;
+    } */
+     /* .ec-extra{
+      height: 500px !important;
+     } */
+    .ec-days, .ec-day, .ec-day-title, .ec-resource{
+      min-width: fit-content;
+      max-width: none;
+    }
+    .ec-day.ec-today{width: 120px;}
+    .ec {width: fit-content;}
+    .ec-lines {width: 0px !important;}
+    /* Remove the default blue background from the calendar */
+.ec-day {
+  background-color: transparent !important;
+}
+
+
+
+
+/* Add custom card styles for each event */
+.event-card {
+  border: 1px solid #ccc; /* Subtle border for separation */
+  border-radius: 8px; /* Slightly rounded corners */
+  padding: 15px; /* Add spacing inside the card */
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Light shadow for the card */
+  font-family: Arial, sans-serif; /* Consistent font */
+  margin-bottom: 15px; /* Spacing between events */
+}
+
+/* Card Header Styles */
+.event-card .card-header {
+  font-weight: bold;
+  font-size: 16px;
+  color: #333; /* Neutral text color */
+  margin-bottom: 10px;
+  text-align: center; /* Center-align the header for a clean layout */
+  background-color: #f4f4f4; /* Light background for the header */
+  padding: 10px;
+  border-radius: 5px;
+}
+
+/* Card Body Styles */
+.event-card .card-body {
+  font-size: 14px;
+  color: #555; /* Softer color for body text */
+}
+
+.event-card .card-body p {
+  margin: 4px 0; /* Small spacing between lines */
+}
+
+.calendar-container {
+  margin-top: 50px;
+}
+
+.calendar-header {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+}
+
+.modal-content {
+  padding: 20px;
+}
+
+.ec-header .ec-day {
+  width: 120px;
+}
+
+.ec-sidebar{
+  background-color: #fafafa;
+}
+.ec-header{
+  background-color: #000000 !important;
+  color: white;
+  padding: 10px 0px;
+  font-weight: 600;
+}
+.ec-header .ec-sidebar{
+  background-color: #000000 !important;
+}
+
+.ec-days,
+.ec-day,
+.ec-day-title,
+.ec-resource {
+  min-width: fit-content;
+  max-width: none;
+}
+
+.ec-day.ec-today {
+  width: 120px;
+}
+
+.ec {
+  width: fit-content;
+}
+
+.ec-lines {
+  width: 0px !important;
+}
+</style>
+
+<!-- <div class="d-flex justify-content-around" style="width: 50%;">
+
+  <div style="height: 20px; " class="d-flex"><button class="btn btn-success"></button> <h6>High Priority</h6> </div>
+  <div style="height: 20px; " class="d-flex"><button class="btn btn-primary"></button> <h6>Medium Priority</h6> </div>
+  <div style="height: 20px; " class="d-flex"><button class="btn btn-danger"></button> <h6>Low Priority</h6> </div>
+
+
+ 
+</div> -->
+
+
+<div class="container calendar-container m-2 ms-4">
+  <div id="ec"></div>
+</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@event-calendar/build@2.3.0/event-calendar.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.9/dayjs.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.10.7/dayjs.min.js"></script>
+  <script src="https://unpkg.com/@fullcalendar/core/main.min.js"></script>
+<!-- partial -->
+  <script  src="./index.js"></script>
+  <!-- <script src="index2.js"></script> -->
+   <!-- <script src="abdul.js"></script> -->
+
+   <!-- <input type="date" name="" id=""> -->
+
+</body>
+</html>
