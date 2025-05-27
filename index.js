@@ -1,3 +1,11 @@
+var LASTLOG;
+var ALLTURE = [];
+function addAllModalIdToSessionStorage(key, newItem){
+  const existing = JSON.parse(sessionStorage.getItem(key)) || [];
+  existing.push(newItem);
+
+  sessionStorage.setItem(key, JSON.stringify(existing));
+}
 ZOHO.CREATOR.init().then(function () {
     console.log("Zoho Creator SDK Initialized.");
 
@@ -50,6 +58,8 @@ ZOHO.CREATOR.init().then(function () {
                   const endHour = task.End_Time_Hours;
                   const employeeId = task.Assignee.ID;
 
+                  ALLTURE.push(task.Run_Time);
+
                   
 
                   return {
@@ -67,13 +77,15 @@ ZOHO.CREATOR.init().then(function () {
                       start_date: task.Task_Date,
                       end_date: task.Due_Date,
                       assignee: task.Assignee.display_value,
-                      Checklist_Template: task.Checklist_Template
+                      Checklist_Template: task.Checklist_Template,
+                      Run_Time : task.Run_Time
                     }
                   };
                 });
 
 
             console.log("Transformed Events:", events);
+            
 
             const ec = new EventCalendar(document.getElementById('ec'), {
               resources,
@@ -90,8 +102,16 @@ ZOHO.CREATOR.init().then(function () {
                 if (hasOtherOverlappingEvents(event)) {
                   alert("This move overlaps with another event. Action reverted.");
                   revert();
+                  
                 } else {
                   updateZohoTask(event);
+
+                  document.getElementById('ScreenFade').style.display = 'block';
+                  // document.getElementById('ec').style.display = 'none';
+                  
+
+                
+                  
                 }
               },   
 
@@ -109,13 +129,14 @@ ZOHO.CREATOR.init().then(function () {
                 center: '',
                 end: 'today,prev,next'
               },
+
               titleFormat: function (start, end) {
                 const s = `${start.getDate()}-${start.getMonth() + 1}-${start.getFullYear()}`;
                 return { html: s };
               },
 
-              eventContent: function(arg) {
-                console.log("arg is here....",arg)
+              eventContent: function(arg) { 
+                // console.log("arg is here....",arg)
                 let eventEl = document.createElement("div");
                 let modalId = `${arg.event.id}`;
                 eventEl.classList.add('drgg');
@@ -135,15 +156,20 @@ ZOHO.CREATOR.init().then(function () {
                 eventEl.classList.add(priorityClass);
 
                 eventEl.classList.add("border-start", "border-5", `border-${clrPrio(priority)}`);
+                eventEl.id = `event-box-${modalId}`;
+                
                 const st =arg.event.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
                 const et = arg.event.end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
                 
                 const timee = calculateTimeDifference(st,et);
-                // console.log(timee);
                 
+                let isRunning = arg.event.extendedProps?.Run_Time;
                
                 eventEl.innerHTML = `
-                  <div class="ec-event-title bg-${clrPrio(priority)}">${arg.event.title}</div>
+                  <div class="ec-event-title bg-${clrPrio(priority)}">${arg.event.title}
+                  
+                  </div>
+                  
                   <div class="ec-event-description ${retDescription(timee)}">${arg.event.extendedProps?.description || "No Description"}</div>
                   
                   <div class="ec-event-priority">${priority}</div>
@@ -151,27 +177,62 @@ ZOHO.CREATOR.init().then(function () {
                     ${arg.event.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - 
                     ${arg.event.end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </div>
+
+                  <div class="ribbon d-none ">- Closed -</div>
+                   
                 `;
-                // newUpdate(modalId)
-                // <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+                if(isRunning === "true"){
+                  eventEl.innerHTML += 
+                  `<span style="border-radius: 100px" id="badge-${modalId}" class="position-absolute top-0 start-100 translate-middle badge ">
+                    <img style="height: 25px; width: 25px;" src="http://ynl.yey.mybluehost.me/website_356f9394/wp-content/uploads/2025/05/Untitled-50-x-50-px-500-x-500-px.gif" />
+                    <span class="visually-hidden">unread messages</span>
+                  </span>`
+                }
+
+                
                 let modalEl = document.createElement("div");
                 modalEl.innerHTML = `
 
 
                   <div class="modal fade " id="${modalId}" tabindex="-1" aria-labelledby="${modalId}-label" aria-hidden="false">
+                  
                     <div class="modal-dialog modal-xl">
+                      
                       <div class="modal-content p-0">
 
-                      <div class="container m-2">
+                      
+                      
+                      <div class="container">
+
+                        <div id="ribbonn-${modalId}" class="ribbon d-none ">- Closed -</div>
+
+                      
+                      <div class="d-flex justify-content-end">
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
         
                           
-                          <div class="card shadow-sm position-relative">
-                              <div class="task-card-header bg-${clrPrio(priority)}">
-                                  <h5 class="mb-0">Task: ${arg.event.title}</h5>
-                                  <div class="timer-container">
+                          <div class=" position-relative mb-2">
+                           
+                              <div class="task-card-header mb-4" >
+                                  <div class="text-${clrPrio(priority)} ps-0" style="width: fit-content; border-radius: 10px;">
+                                    <h5 class="mb-0 " style="font-size: 45px;">${arg.event.title}</h5>
+                                  </div>
+                                  <div class="timer-container bg-${clrPrio(priority)} py-2 px-3 mb-4" style="border-radius: 50px;">
                                       <span class="timer me-3" id="taskTimer-${modalId}">00:00:00</span>
-                                      <button class="timer-button" id="toggleTimer-${modalId}">
-                                          <i class="bi bi-play-circle-fill"></i>
+                                      <button class="timer-button" id="toggleTimer-${modalId}"}>
+                                          ${
+                                           (() => {
+
+                                             if ( isRunning === "false"){
+
+                                                return '<i class="bi bi-play-circle-fill"></i>'
+                                            }   else{
+                                                return '<i class="bi bi-stop-circle-fill"></i>'
+                                            }
+                                           })()
+                                          }
                                       </button>
                                   </div>
                               </div>
@@ -227,7 +288,7 @@ ZOHO.CREATOR.init().then(function () {
                                                               <th>Action</th>
                                                           </tr>
                                                       </thead>
-                                                      <tbody id="subtaskList-${modalId}"></tbody>
+                                                      <tbody class="subtaskList" id="subtaskList-${modalId}"></tbody>
                                                   </table>
                                               </div>
                                               <div class="tab-content mt-3">
@@ -242,11 +303,11 @@ ZOHO.CREATOR.init().then(function () {
                                                       </div>
                                                       <div class="col">
                                                       <small class="text-muted">Started Time</small>
-                                                        <input type="text" id="logManualST-${modalId}" class="form-control" placeholder="HH:MM:SS">
+                                                        <input type="text" id="logManualST-${modalId}" class="form-control" placeholder="HH:MM">
                                                       </div>
                                                       <div class="col">
                                                       <small class="text-muted">Fineshed Time</small>
-                                                        <input type="text" id="logManualET-${modalId}" class="form-control" placeholder="HH:MM:SS">
+                                                        <input type="text" id="logManualET-${modalId}" class="form-control" placeholder="HH:MM">
                                                       </div>
                                                       <div class="col">
                                                          <button class="btn btn-${clrPrio(priority)} btn-sm my-4" onclick="addNewLogManualy('${modalId}')">Add Log</button>
@@ -304,8 +365,7 @@ ZOHO.CREATOR.init().then(function () {
                                                           <div id="checklistTemplateContiner-${modalId}">
 
                                                           </div>
-
-                                                          
+                  
                                                         </div>
                                                       </div>
 
@@ -330,46 +390,61 @@ ZOHO.CREATOR.init().then(function () {
                   
                 `;
 
-
-
                 // related js 
+
+                addAllModalIdToSessionStorage("allModalIdArr", modalId)
+                localStorage.setItem("isRunning", isRunning)
+
 
                 // Append modal to body (to prevent nesting issues)
                 document.body.appendChild(modalEl);
-                newUpdate(modalId);
-                displayLogs(modalId);
-                displaySubtask(modalId);
-                displayNotes(modalId);
-                displayFiles(modalId);
-                displayChecklist(modalId);
-                getChecklistTemplate().then(t => {
+                
+                newUpdate(modalId, isRunning);
+                // displayLogs(modalId);
+                // displaySubtask(modalId);
+                // displayNotes(modalId);
+                // displayFiles(modalId);
+                // displayChecklist(modalId);
+                // addRibbon(modalId);
 
-                  // t.map(tt => console.log("map",tt.Checklist_Template.display_value))
-                  // console.log("TTTTT",t )
+                getAlreadyAddedTemplate().then( addedTemplate => {
 
-                  // console.log(t.Checklist_Template)
-                  const uniqueTemplate = [...new Set(t.map(tt => tt.Checklist_Template.display_value))];
-                  console.log(uniqueTemplate)
-                  let html = '';
-                  uniqueTemplate.forEach(tem => {
-                    html += `
-                   
-                      <input id="switchCheckDefault-${modalId}" onChange='addChecklistTemplate(this, "${tem}", ${JSON.stringify(t)},"${modalId}")' class="form-check-input" type="checkbox" role="switch">
-                      <small class="text-muted">${tem}</small><br>
-                   
-                    `;
+                  getChecklistTemplate().then(t => {
+
+
+                    const uniqueTemplate = [...new Set(t.map(tt => tt.Checklist_Template.display_value))];
+                    // console.log(uniqueTemplate)
+                    let html = '';
+                    uniqueTemplate.forEach(tem => {
+
+                      const checking = addedTemplate.filter(m => m.Checklist_Template.display_value === tem)
+                      // console.log("checking", checking.filter(m => m.Task.ID  === modalId))
+
+                      if ( checking.filter(m => m.Task.ID  === modalId)){
+
+                        // console.log("Hellow world mamey..")
+
+                      }
+
+                      html += `
+                     
+                        <input id="switchCheckDefault-${modalId}" onChange='addChecklistTemplate(this, "${tem}", ${JSON.stringify(t)},"${modalId}")' class="form-check-input" type="checkbox" role="switch" ${checking.some(m => m.Task.ID  === modalId) ? 'checked' : ''}  >
+                        <small class="text-muted">${tem}</small><br>
+                     
+                      `;
+                    });
+                    document.getElementById(`checklistTemplateContiner-${modalId}`).innerHTML = html;
                   });
-                  document.getElementById(`checklistTemplateContiner-${modalId}`).innerHTML = html;
+
                 });
-                
-                
-                
+
+                                 
               
                 return { domNodes: [eventEl] };
-              }
-              
+              }   
 
             });
+             
           
             function hasOverlappingEvents(event) {
               const rId = event.resource ? event.resource.id : event.resourceIds[0];
@@ -384,9 +459,35 @@ ZOHO.CREATOR.init().then(function () {
             function hasOtherOverlappingEvents(event) {
               return hasOverlappingEvents(event);
             }
+
+            // console.log(ALLTURE)
+            const allSame = ALLTURE.every(val => val === ALLTURE[0]);
+
+            if (allSame){
+              console.log(" all true")
+            }
+            else{
+              const localModelID = localStorage.getItem("MODEL_ID");
+              const itemTasks = document.getElementsByClassName("timer-button");
+
+              for (let item of itemTasks) {
+
+                if(item.id != `toggleTimer-${localModelID}`){
+                  item.setAttribute("disabled", "true");
+                  item.style.opacity = "0.3";
+
+                }
+          
+              }
+               
+            }
+
+
+
           })
 
 
+            
 
           .catch(function (error) {
             console.error("Error fetching task data:", error);
@@ -405,7 +506,6 @@ ZOHO.CREATOR.init().then(function () {
           appName: "internal-project-management-platform",
           reportName: "All_Checklist_Template_Items"
         };
-
         try {
           const res = await ZOHO.CREATOR.API.getAllRecords(templateConfig);
           res.data.forEach(temp => {
@@ -418,19 +518,26 @@ ZOHO.CREATOR.init().then(function () {
           console.error("Error fetching checklist template:", error);
           return [];
         }
-      
-        // ZOHO.CREATOR.API.getAllRecords(templateConfig).then(function (res) {
-        //   res.data.forEach(temp => {
-        //     // console.log("template-->", temp.Checklist_Template.display_value)
-        //     CHECKLISTTEMPLATEARRAY.push(temp.Checklist_Template.display_value);
-        //   });
-        // });
-        // console.log(CHECKLISTTEMPLATEARRAY)
+      }
 
-        // if(CHECKLISTTEMPLATEARRAY){
-        //   return CHECKLISTTEMPLATEARRAY;
-        // }
+      //get already added templates...
+      async function getAlreadyAddedTemplate(){
+        const ADDEDTEMPLATEARRAY = []
+        const config ={
+            appName: "internal-project-management-platform",
+            reportName: "All_Task_Checklists"
+        }
+        try {
+          const res =await ZOHO.CREATOR.API.getAllRecords(config);
+          res.data.forEach(templ => {
+            ADDEDTEMPLATEARRAY.push(templ)
+          });
+          return ADDEDTEMPLATEARRAY
 
+        } catch(error){
+          console.error("Error fetching the added checklist template:", error)
+          return [];
+        }
       }
 
 
@@ -534,23 +641,16 @@ ZOHO.CREATOR.init().then(function () {
       function displayLogs(modalId){
           const logTable = document.getElementById(`logHistory-${modalId}`);
          
-
           // // Fetch log data
           const logsConfig = {
             appName: "internal-project-management-platform",
             reportName: "All_Logs"
           };
           
-          
-          ZOHO.CREATOR.API.getAllRecords(logsConfig)
-          .then(function (logsresponse) {
+          ZOHO.CREATOR.API.getAllRecords(logsConfig).then(function (logsresponse) {
             logsresponse.data.forEach(log => {
-              // console.log("Log Response:", log);
-              // console.log("Modal id:", modalId);
+
               if(modalId == log.Task.ID){
-
-                // console.log("god bless you mamey...........")
-
                 let oldRow = `
                 <tr>
                   <td>${log.Date_field}</td>
@@ -560,7 +660,6 @@ ZOHO.CREATOR.init().then(function () {
                 </tr>`;
 
                 logTable.innerHTML += oldRow;
-
               }
               
             });
@@ -655,14 +754,15 @@ ZOHO.CREATOR.init().then(function () {
               let row = "";
 
               if(subtask.Status === "New"){
-                row = `<tr>
+                row = `
+                <tr>
                   <td>${subtask.Sub_task_Name}</td>
                   <td class="status">${subtask.Status}</td>
                   <td>
                        <button class='btn btn-warning btn-sm' onclick='updateStatus(this, "${subtask.Status}", "${subtaskID}", "${modalId}")' > Mark In Progress</button> 
-                      <button class='btn btn-danger btn-sm' onclick='deleteSubtask("${subtaskID}", "${modalId}")'>Delete</button>
+                       <button class='btn btn-danger btn-sm' onclick='deleteSubtask("${subtaskID}", "${modalId}")'>Delete</button>
                   </td>
-                  </tr>`;
+                </tr>`;
                   
               
               } else if(subtask.Status === "In Progress"){
@@ -688,12 +788,7 @@ ZOHO.CREATOR.init().then(function () {
                       <button class='btn btn-danger btn-sm' onclick='deleteSubtask("${subtaskID}", "${modalId}")'>Delete</button>
                   </td>
                   </tr>`;
-
               }
-
-              
-
-              
               
               // let row = `<tr>
               //     <td>${subtask.Sub_task_Name}</td>
@@ -716,14 +811,6 @@ ZOHO.CREATOR.init().then(function () {
       window.refreshChecklist = function(modalId){
         const checklistList = document.getElementById(`checklistList-${modalId}`);
 
-        // checklistList.innerHTML = `
-        // <center>
-        //   <div class="spinner-border text-center" role="status">
-        //     <span class="visually-hidden">Loading...</span>
-        //   </div>
-        // </center>
-        
-        // `;
         checklistList.innerHTML = "";
 
       
@@ -732,11 +819,7 @@ ZOHO.CREATOR.init().then(function () {
           reportName: "All_Checklists"
         };
       
-        ZOHO.CREATOR.API.getAllRecords(checklistConfig)
-        .then(function (Checklistresponse) {
-
-         
-
+        ZOHO.CREATOR.API.getAllRecords(checklistConfig).then(function (Checklistresponse) {
 
           Checklistresponse.data.forEach(checklist => {
             // console.log("Checklist Response------>:", checklist);
@@ -751,6 +834,8 @@ ZOHO.CREATOR.init().then(function () {
 
               checklistList.innerHTML += checklisting;
 
+            } else{
+              console.log("Else part executing for prevent the error da macha!!!")
             }
             
           });
@@ -798,26 +883,42 @@ ZOHO.CREATOR.init().then(function () {
           reportName: "All_Files"
         };
       
-        ZOHO.CREATOR.API.getAllRecords(FilesConfig)
-              .then(function (Filesresponse) {
-                // console.log("file respojnse:", Filesresponse.data);
-                Filesresponse.data.forEach(file => {
+        ZOHO.CREATOR.API.getAllRecords(FilesConfig).then(function (Filesresponse) {
+          // console.log("file respojnse:", Filesresponse.data);
+          Filesresponse.data.forEach(file => {
 
 
-                  if(modalId == file.Task.ID){
+            if(modalId == file.Task.ID){
+              const fileID = file.ID;
+              const fullStr = file.File_field;
 
-                    const fullStr = file.File_field;
+              const cleaned = fullStr.replace("/api/v2/32demo1zentegra/internal-project-management-platform/report/All_Files/", "");
 
-                    const cleaned = fullStr.replace("/api/v2/32demo1zentegra/internal-project-management-platform/report/All_Files/", "");
+              // const newFile =`<li class="list-group-item d-flex justify-content-between"><img src="https://creatorapp.zoho.com${fullStr}" > 
+              // <button onClick="downloadFile('${fileID}')" class="btn btn-outline-dark btn-sm">Download</button></li>`; https://creatorapp.zoho.com${fullStr}
 
-                    const newFile =`<li class="list-group-item">${cleaned}</li>`;
+                const newFile =
+                `
+                  <li class="list-group-item d-flex justify-content-between">
 
-                    fileList.innerHTML += newFile;
+                    <div class="preview">
 
-                  }
-                  
-                });
-              });
+                      <img src="${[".png", ".jpg", ".jpeg", ".webp"].some(ext => fullStr.toLowerCase().endsWith(ext)) ? `https://creatorapp.zoho.com${fullStr}` : fullStr.toLowerCase().endsWith(".pdf") ? 'https://cdn-icons-png.flaticon.com/128/337/337946.png' : 'https://cdn-icons-png.flaticon.com/128/2821/2821739.png' }" alt="${cleaned}" style="max-height: 30px; cursor: pointer;" />
+                         
+                    </div>
+
+
+                    <a href="https://creatorapp.zoho.com${fullStr}"  class="btn btn-outline-dark btn-sm">Download</a>
+                  </li>
+                `;
+              
+
+              fileList.innerHTML += newFile;
+
+            }
+            
+          });
+        });
       }
 
             //display Files
@@ -832,19 +933,51 @@ ZOHO.CREATOR.init().then(function () {
               };
               
               
-              ZOHO.CREATOR.API.getAllRecords(FilesConfig)
-              .then(function (Filesresponse) {
+              ZOHO.CREATOR.API.getAllRecords(FilesConfig).then(function (Filesresponse) {
                 // console.log("file respojnse:", Filesresponse.data);
                 Filesresponse.data.forEach(file => {
 
-
                   if(modalId == file.Task.ID){
-
+                    const fileID = file.ID;
                     const fullStr = file.File_field;
 
                     const cleaned = fullStr.replace("/api/v2/32demo1zentegra/internal-project-management-platform/report/All_Files/", "");
 
-                    const newFile =`<li class="list-group-item">${cleaned}</li>`;
+                    // const newFile =`<li class="list-group-item d-flex justify-content-between"><img src="https://creatorapp.zoho.com${fullStr}" > 
+                    // <button onClick="downloadFile('${fileID}')" class="btn btn-outline-dark btn-sm">Download</button></li>`; https://creatorapp.zoho.com${fullStr}
+
+                      const newFile =
+                      `
+                        <li class="list-group-item d-flex justify-content-between">
+
+                          <a class="preview" type="button" data-bs-toggle="modal" data-bs-target="#${cleaned}">
+
+                            <img src="${[".png", ".jpg", ".jpeg", ".webp"].some(ext => fullStr.toLowerCase().endsWith(ext)) ? `https://creatorapp.zoho.com${fullStr}` : fullStr.toLowerCase().endsWith(".pdf") ? 'https://cdn-icons-png.flaticon.com/128/337/337946.png' : 'https://cdn-icons-png.flaticon.com/128/2821/2821739.png' }" alt="${cleaned}" style="max-height: 30px; cursor: pointer;" />
+                               
+                          </a>
+
+                          <a href="https://creatorapp.zoho.com${fullStr}"  class="btn btn-outline-dark btn-sm">Download</a>
+                        </li>
+
+                        <!-- Modal -->
+                        <div class="modal fade" id="${cleaned}" tabindex="-1" aria-labelledby="${cleaned}Label" aria-hidden="true">
+                          <div class="modal-dialog">
+                            <div class="modal-content">
+                              <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="${cleaned}Label">Modal title</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <div class="modal-body">
+                                ...
+                              </div>
+                              <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary">Save changes</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      `;
 
                     fileList.innerHTML += newFile;
 
@@ -854,6 +987,7 @@ ZOHO.CREATOR.init().then(function () {
               });
       
             }
+
 
   })
   .catch(function (error) {
@@ -878,6 +1012,7 @@ function formatDateTime(date) {
 }
 // Function to update Zoho Creator when a task is moved/resized
 function updateZohoTask(event) {
+
   const taskId = event.id; // Task unique ID
   const formattedStart = formatDateTime(event.start);
   const formattedEnd = formatDateTime(event.end);
@@ -913,6 +1048,7 @@ function updateZohoTask(event) {
     .then(function (response) {
       if (response.code === 3000) {
         console.log("✅ Task updated successfully in Zoho Creator:", response);
+        refreshMamey()
       } else {
         console.error("❌ Failed to update task:", response);
       }
@@ -921,14 +1057,16 @@ function updateZohoTask(event) {
       console.error("❌ Error updating task in Zoho Creator:", error);
     });
 
-    console.log("Start_Time_No", event.start.getHours(),
-      "End_Time_No", event.end.getHours(),
-      "Start_Mins_No", event.start.getMinutes(),
-      "End_Mins_No", event.end.getMinutes(),
-      "Employee_Name", employeeId)
+    
+    function refreshMamey(){
+      const subtaskList = document.getElementsByClassName('subtaskList');
+
+      for (let item in subtaskList){
+        item.innerText = "hello mamey"
+      }
+    }
+
 }
-
-
 
 
 function clrPrio(priority){
@@ -945,7 +1083,6 @@ function clrPrio(priority){
     return 'nopriority'
   }
 }
-
 
 function calculateTimeDifference(startTime, endTime) {
   // Convert time strings to Date objects
@@ -983,33 +1120,171 @@ function retPrio(timee) {
 }
 console.log("hiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
 
-// new update 
+// new update ---------------------------------------------------------------------------------------------------------
 
-function newUpdate(modalId) {
+function newUpdate(modalId, isRunning) {
     let timerRunning = false;
     let startTime;
     let timerInterval;
 
     const toggleBtn = document.getElementById(`toggleTimer-${modalId}`);
     const taskTimer = document.getElementById(`taskTimer-${modalId}`);
-    const logTable = document.getElementById(`logHistory-${modalId}`);
     const totalTimeElement = document.getElementById(`totalTime-${modalId}`);
     const employeeRateElement = document.getElementById(`employeeRate-${modalId}`);
     const totalAmountElement = document.getElementById(`totalAmount-${modalId}`);
     let todayDate = new Date().toLocaleDateString();
 
+    const itemTasks = document.getElementsByClassName("timer-button");
+
+    if(isRunning === "true"){
+
+            startTime = new Date();
+            timerRunning = true;
+
+            const lastLog1 = localStorage.getItem("LASTLOG");
+
+            let lastLog2;
+
+            (async () => {
+
+              var config = {
+                appName : "internal-project-management-platform",
+                reportName : "All_Logs", 
+                id : lastLog1
+              }
+
+              try{
+
+                const res = await ZOHO.CREATOR.API.getRecordById(config);
+                console.log("lasttt-->", res.data.Work_Started);
+
+                lastLog2 = res.data.Work_Started;
+
+                runTimer(lastLog2);
+
+              } catch (error){
+
+                console.error("Error Fetching record mameyy:", error)
+
+              }
+
+            })()
+
+            
+
+            const runTimer = (lastLog2) =>{
+                
+                const currentTime = new Date().toLocaleTimeString();
+                
+                function calculateTimeDifference2(startTime, endTime) {
+
+                  const [sh, sm, ss] = startTime.split(':').map(Number);
+                  const [eh, em, es] = endTime.split(':').map(Number);
+                
+                  const start = new Date();
+                  start.setHours(sh, sm, ss);
+                
+                  const end = new Date();
+                  end.setHours(eh, em, es);
+                
+                  let diffInSeconds = Math.floor((end - start) / 1000);
+                
+                  if (diffInSeconds < 0) diffInSeconds += 24 * 3600; // handle crossing midnight
+                
+                  const hours = Math.floor(diffInSeconds / 3600);
+                  const minutes = Math.floor((diffInSeconds % 3600) / 60);
+                  const seconds = diffInSeconds % 60;
+                
+                  return `${hours}:${minutes}:${seconds}`;
+
+
+                }
+
+                const calculateInitialOffest = calculateTimeDifference2(lastLog2, currentTime);
+
+                console.log("calculateInitialOffest", calculateInitialOffest)
+
+                const [h, m, s] = calculateInitialOffest.split(":").map(Number);
+
+                console.log(h, m, s)
+
+                let initialOffset = (h * 3600 + m * 60 + s) * 1000;
+
+                console.log("initialOffset", initialOffset)
+
+                let start = Date.now() - initialOffset;
+                timerInterval = setInterval(function () {
+                    let elapsed = Date.now() - start;
+                    let hours = Math.floor(elapsed / 3600000);
+                    let minutes = Math.floor((elapsed % 3600000) / 60000);
+                    let seconds = Math.floor((elapsed % 60000) / 1000);
+                    taskTimer.innerText = `${hours.toString().padStart(2, '0')}:${minutes
+                        .toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }, 1000);
+            }
+    }
+
+
     toggleBtn.addEventListener("click", function () {
+
+
         if (!timerRunning) {
             startTime = new Date();
             timerRunning = true;
             this.innerHTML = '<i class="bi bi-stop-circle-fill"></i>';
-            startTimer();
+            startTimer(modalId);
+
+            const startTimeStr = startTime.toLocaleTimeString();
+            console.log("Start Time is gonna add now...")
+            addOnlyStartTime(modalId, startTimeStr);
+
+            localStorage.setItem("MODEL_ID", modalId)
+
+
+            if(isRunning === "false"){ 
+
+              console.log("Trying to update runitme da...", isRunning)
+
+              
+
+              const formData = {
+                  "data" : {
+                    "Run_Time" : true
+                  }
+                }
+
+              const config = {
+                  appName : "internal-project-management-platform",
+                  reportName : "Task_Report", 
+                  id : modalId,
+                  data : formData 
+              }
+
+              ZOHO.CREATOR.API.updateRecord(config).then(function(response){
+                  if(response.code == 3000){
+                      console.log("Record updated successfully");
+                      isRunning = "true";
+                  } 
+              });
+
+            }
+
+            for (let item of itemTasks) {
+
+              if(item.id != `toggleTimer-${modalId}`){
+                item.setAttribute("disabled", "true");
+                item.style.opacity = "0.3";
+
+              }
+        
+            }
+
+            
+
         } else {
 
             
             let endTime = new Date();
-
-
 
             let durationMs = endTime - startTime;
             let totalMinutes = Math.floor(durationMs / 60000);
@@ -1021,18 +1296,40 @@ function newUpdate(modalId) {
             let hoursWorked = (durationMs / 3600000); // for total cost calculation
             let readableTime = `${hours}h ${minutes}m ${remainingSeconds}s`;
 
-
-
             let startTimeStr = startTime.toLocaleTimeString();
             let endTimeStr = endTime.toLocaleTimeString();
 
-            addNewLog(modalId, readableTime, startTimeStr, endTimeStr);
+            const lastlog3 = localStorage.getItem("LASTLOG");
+            console.log("End Time is gonna add now...")
+            addOnlyEndTime(endTimeStr, lastlog3, modalId);
 
+            if(isRunning === "true"){
+
+              console.log("Inside Macha....!!@@##")
+
+              const formData = {
+                  "data" : {
+                    "Run_Time" : false
+                  }
+                }
+
+              const config = {
+                  appName : "internal-project-management-platform",
+                  reportName : "Task_Report", 
+                  id : modalId,
+                  data : formData 
+              }
+
+              ZOHO.CREATOR.API.updateRecord(config).then(function(response){
+                  if(response.code == 3000){
+                      console.log("Record updated successfully");
+                  } 
+              });
+
+
+            }
             
-            
-            // displayLogs(modalId);
-            // let newRow = `<tr><td>${new Date().toLocaleDateString()}</td><td>${startTimeStr}</td><td>${endTimeStr}</td><td>${readableTime}</td></tr>`;
-            // logTable.insertAdjacentHTML("afterbegin", newRow);
+
 
             let currentTotal = parseFloat(totalTimeElement.innerText) || 0;
             let updatedTotal = currentTotal + parseFloat(hoursWorked);
@@ -1045,14 +1342,21 @@ function newUpdate(modalId) {
             this.innerHTML = '<i class="bi bi-play-circle-fill"></i>';
             clearInterval(timerInterval);
 
+            const badge = document.getElementById(`badge-${modalId}`);
+            if (badge) badge.remove();
 
+            for (let item of itemTasks) {
+              
+                item.removeAttribute("disabled");
+                item.style.opacity = "1";
+            }
 
-            //else content
+            localStorage.removeItem("MODEL_ID")
             
         }
     });
 
-    function startTimer() {
+    function startTimer(modalId) {
         let start = Date.now();
         timerInterval = setInterval(function () {
             let elapsed = Date.now() - start;
@@ -1062,6 +1366,14 @@ function newUpdate(modalId) {
             taskTimer.innerText = `${hours.toString().padStart(2, '0')}:${minutes
                 .toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }, 1000);
+
+        const addBatch = document.getElementById(`event-box-${modalId}`);
+        addBatch.innerHTML += `
+       <span style="border-radius: 100px" id="badge-${modalId}" class="position-absolute top-0 start-100 translate-middle badge ">
+        <img style="height: 25px; width: 25px;" src="http://ynl.yey.mybluehost.me/website_356f9394/wp-content/uploads/2025/05/Untitled-50-x-50-px-500-x-500-px.gif" />
+        <span class="visually-hidden">unread messages</span>
+      </span>
+        `;
     }
 }
 
@@ -1071,26 +1383,13 @@ function addSubtask(modalId) {
     let input = document.getElementById("subtaskName-" + modalId);
     let task = input.value.trim();
     if (task !== "") {
-        
-        
 
         addNewSubtask(modalId,task);
         input.value = "";
 
     }
 }
-// function updateStatus(button) {
-//     let row = button.parentElement.parentElement;
-//     let statusCell = row.querySelector(".status");
-//     if (statusCell.textContent === "New") {
-//         statusCell.textContent = "In Progress";
-//         button.textContent = "Mark Completed";
-//         button.classList.replace("btn-warning", "btn-success");
-//     } else if (statusCell.textContent === "In Progress") {
-//         statusCell.textContent = "Completed";
-//         button.remove();
-//     }
-// }
+
 function updateStatus(button,  status, subtaskID, modalId) {
 
   if (status === "New") {
@@ -1111,11 +1410,11 @@ function updateStatus(button,  status, subtaskID, modalId) {
     } 
     ZOHO.CREATOR.API.updateRecord(statusUpdateconfig).then(function(response){
       if (response.code == 3000) {
-        console.log("Subtask Status updated successfully");
-        console.log("before refresh...", button)
+        // console.log("Subtask Status updated successfully");
+        // console.log("before refresh...", button)
         button.innerText = "Updated";
         refreshSubtasks(modalId);
-        console.log("After refresh...")
+        // console.log("After refresh...")
       } else {
         console.log("Error Updating subtask status:", response);
       }
@@ -1140,10 +1439,9 @@ function updateStatus(button,  status, subtaskID, modalId) {
     } 
     ZOHO.CREATOR.API.updateRecord(statusUpdateconfig).then(function(response){
       if (response.code == 3000) {
-        console.log("Subtask Status updated successfully");
-        console.log("before refresh...")
+        
         refreshSubtasks(modalId);
-        console.log("After refresh...")
+       
       } else {
         console.log("Error Updating subtask status:", response);
       }
@@ -1151,27 +1449,9 @@ function updateStatus(button,  status, subtaskID, modalId) {
 
   }
 
-  // let row = button.parentElement.parentElement;
-  // let statusCell = row.querySelector(".status");
-  // if (statusCell.textContent === "New") {
-  //     statusCell.textContent = "In Progress";
-  //     button.textContent = "Mark Completed";
-  //     button.classList.replace("btn-warning", "btn-success");
-  // } else if (statusCell.textContent === "In Progress") {
-  //     statusCell.textContent = "Completed";
-  //     button.remove();
-  // }
+ 
 }
-// function deleteSubtask(subtaskID){
-//   var config = { 
-//     appName: "internal-project-management-platform",
-//     reportName: "Subtask_Report", 
-//     criteria : subtaskID
-//   }
-//   ZOHO.CREATOR.API.deleteRecord(config).then(function(response){
-//   console.log("Record has been deleted");
-//   }); 
-// }
+
 
 function deleteSubtask(subtaskID, modalId) {
 
@@ -1193,7 +1473,7 @@ function deleteSubtask(subtaskID, modalId) {
       }
   });
 }
-// "(ID == \"4717578000000782091\" )"
+
 
 function addNote(modalId) {
   // console.log(`noteText-${modalId}`);
@@ -1206,29 +1486,6 @@ function addNote(modalId) {
   }
 }
 
-// function addNote() {
-//     let noteText = document.getElementById("noteText").value;
-//     if (noteText.trim() !== "") {
-//         let noteList = document.getElementById("noteList");
-//         let li = document.createElement("li");
-//         li.classList.add("list-group-item");
-//         li.innerText = noteText;
-//         noteList.appendChild(li);
-//         document.getElementById("noteText").value = "";
-//     }
-// }
-
-// function addFile() {
-//     let fileInput = document.getElementById("fileUpload");
-//     if (fileInput.files.length > 0) {
-//         let fileList = document.getElementById("fileList");
-//         let li = document.createElement("li");
-//         li.classList.add("list-group-item");
-//         li.innerText = fileInput.files[0].name;
-//         fileList.appendChild(li);
-//         fileInput.value = "";
-//     }
-// }
 
 function addFile(modalId) {
   let fileInput = document.getElementById(`fileUpload-${modalId}`).files[0];
@@ -1236,39 +1493,21 @@ function addFile(modalId) {
       // let fileList = document.getElementById(`fileList-${modalId}`);
       addNewFile(modalId,fileInput)
 
-      // let li = document.createElement("li");
-      // li.classList.add("list-group-item");
-      // li.innerText = fileInput.files[0].name;
-      // fileList.appendChild(li);
       fileInput.value = "";
   }
 }
 
-// function addChecklistItem() {
-//     let checklistItem = document.getElementById(`checklistItem-${modalId}`).value.trim();
-//     if (checklistItem !== "") {
-//         let checklistList = document.getElementById("checklistList");
-//         let li = document.createElement("li");
-//         li.classList.add("list-group-item", "d-flex", "justify-content-between", "align-items-center");
-//         li.innerHTML = `${checklistItem} <button class='btn btn-success btn-sm' onclick='markChecklistItem(this)'>Mark Done</button>`;
-//         checklistList.appendChild(li);
-//         document.getElementById("checklistItem").value = "";
-//     }
-// }
+
 function addChecklistItem(modalId) {
   let checklistItem = document.getElementById(`checklistItem-${modalId}`).value.trim();
-  console.log(checklistItem)
+  // console.log(checklistItem)
   if (checklistItem !== "") {
       addNewChecklistItem(modalId, checklistItem)
       document.getElementById(`checklistItem-${modalId}`).value = "";
   }
 }
 
-// function markChecklistItem(button) {
-//     let li = button.parentElement;
-//     li.style.textDecoration = "line-through";
-//     button.remove();
-// }
+
 
 function markChecklistItem(buttonID, modalId) {
 
@@ -1310,7 +1549,6 @@ function addNewLog(modalId, readableTime, startTimeStr, endTimeStr){
 
   const todayDate  = new Date().toLocaleDateString();
 
-  // console.log("New log object.....", modalId, readableTime, startTimeStr, endTimeStr)
   formData = {
     "data" : {
       
@@ -1338,43 +1576,52 @@ function addNewLog(modalId, readableTime, startTimeStr, endTimeStr){
       console.log("Error adding record:", logUpdateResponse);
     }
   });
+
+  
 }
 
-function addNewLogManualy(modalId){
+function addOnlyStartTime(modalId,startTimeStr){
+  const todayDate  = new Date().toLocaleDateString();
 
-  const rawDate = document.getElementById(`logManualDate-${modalId}`).value;
-  const startTime = document.getElementById(`logManualST-${modalId}`).value;
-  const endTime = document.getElementById(`logManualET-${modalId}`).value;
+  formData = {
+    "data" : {
+      
+      "Work_Started" : startTimeStr,
+      "Task" : modalId,
+      "Date_field" : todayDate
+      
+    }
 
-  function isValidTimeFormat(time) {
-    const pattern = /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
-    return pattern.test(time);
   }
 
-  if (!rawDate) {
-    alert("Please select a valid date");
-    return;
-  }
-    // Compare selected date with today's date
-  const selectedDate = new Date(rawDate);
-  const today = new Date();
-  
-
-  if (selectedDate > today) {
-    alert("Future dates are not allowed");
-    return;
+  var logUpdateConfig = {
+    appName: "internal-project-management-platform",
+    formName: "Logs",
+    data : formData
   }
 
-  if (!isValidTimeFormat(startTime) || !isValidTimeFormat(endTime)) {
-    alert("Please enter time in HH:MM:SS format");
-    return;
-  }
+  ZOHO.CREATOR.API.addRecord(logUpdateConfig).then(function(logUpdateResponse) {
+    if (logUpdateResponse.code == 3000) {
+      console.log("Record added successfully");
 
-  
-  const [year, month, day] = rawDate.split("-");
-  const date = `${day}/${month}/${year}`;
+      LASTLOG =  logUpdateResponse.data.ID;
 
-  function calculateTimeDifference(startTime, endTime) {
+      localStorage.setItem("LASTLOG", logUpdateResponse.data.ID);
+      
+      refreshLogs(modalId);
+      console.log('LASTLOG-->', LASTLOG)
+
+      const lastLog = localStorage.getItem("LASTLOG");
+      console.log("lastLog",lastLog )
+    } else {
+      console.log("Error adding record:", logUpdateResponse);
+    }
+  });
+}
+
+function addOnlyEndTime( endTimeStr, LASTLOG, modalId){
+
+  function calculateTimeDifference2(startTime, endTime) {
 
     const [sh, sm, ss] = startTime.split(':').map(Number);
     const [eh, em, es] = endTime.split(':').map(Number);
@@ -1394,16 +1641,126 @@ function addNewLogManualy(modalId){
     const seconds = diffInSeconds % 60;
   
     return `${hours}h ${minutes}m ${seconds}s`;
+
   }
 
-  const hoursWorked = calculateTimeDifference(startTime, endTime);
+  var config = {
+       appName : "internal-project-management-platform",
+       reportName : "All_Logs", 
+       id : LASTLOG
+  } 
+
+
+  ZOHO.CREATOR.API.getRecordById(config).then(function(response){
+      if(response.code == 3000){
+        // console.log("Work_Started",response.data.Work_Started, "Work_Ended", endTimeStr, "LastLog0", LASTLOG)
+        const finalWorkStarted = response.data.Work_Started;
+        const finalWorkEnded = endTimeStr;
+        const finalWorkedHours = calculateTimeDifference2(finalWorkStarted, finalWorkEnded);
+        console.log("s: ",finalWorkStarted, " e: ",finalWorkEnded, " finalWorkedHours " , finalWorkedHours)
+        calFinalLog(finalWorkEnded,finalWorkedHours, LASTLOG, modalId);
+      } else{
+        console.log("error", response)
+      }
+  });
+
+  function calFinalLog(finalWorkEnded, finalWorkedHours, LASTLOG, modalId){
+
+    console.log(typeof finalWorkEnded, typeof finalWorkEnded, typeof LASTLOG)
+    console.log( finalWorkEnded,  finalWorkEnded,  LASTLOG)
+
+      formData = {
+        "data" : {
+          "Hours_Worked": finalWorkedHours,
+          "Work_Ended" : finalWorkEnded,
+          
+        }
+
+      }
+
+      var config = { 
+          appName : "internal-project-management-platform",
+          reportName : "All_Logs",
+          id : LASTLOG,
+          data : formData 
+      } 
+      ZOHO.CREATOR.API.updateRecord(config).then(function(response){
+          if(response.code == 3000){
+              console.log("Record updated successfully");
+              refreshLogs(modalId);
+          } else{
+            console.log("error", response)
+          }
+      });
+
+    }
+
+}
+
+function addNewLogManualy(modalId){
+
+  const rawDate = document.getElementById(`logManualDate-${modalId}`).value;
+  const startTime = document.getElementById(`logManualST-${modalId}`).value;
+  const endTime = document.getElementById(`logManualET-${modalId}`).value;
+
+  function isValidTimeFormat(time) {
+    const pattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+    return pattern.test(time);
+  }
+
+
+  if (!rawDate) {
+    alert("Please select a valid date");
+    return;
+  }
+    // Compare selected date with today's date
+  const selectedDate = new Date(rawDate);
+  const today = new Date();
+  
+
+  if (selectedDate > today) {
+    alert("Future dates are not allowed");
+    return;
+  }
+
+  if (!isValidTimeFormat(startTime) || !isValidTimeFormat(endTime)) {
+    alert("Please enter time in HH:MM format");
+    return;
+  }
+
+  
+  const [year, month, day] = rawDate.split("-");
+  const date = `${day}/${month}/${year}`;
+
+  function calculateTimeDifference1(startTime, endTime) {
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+
+  const start = new Date();
+  start.setHours(sh, sm, 0); // seconds set to 0
+
+  const end = new Date();
+  end.setHours(eh, em, 0); // seconds set to 0
+
+  let diffInMinutes = Math.floor((end - start) / 60000);
+
+  if (diffInMinutes < 0) diffInMinutes += 24 * 60; // handle crossing midnight
+
+  const hours = Math.floor(diffInMinutes / 60);
+  const minutes = diffInMinutes % 60;
+
+  return `${hours}h ${minutes}m 0s`;
+}
+
+
+  const hoursWorked = calculateTimeDifference1(startTime, endTime);
 
   formData = {
     "data" : {
       
       "Hours_Worked": hoursWorked ,
-      "Work_Started" : startTime,
-      "Work_Ended" : endTime,
+      "Work_Started" : `${startTime}:00`,
+      "Work_Ended" : `${endTime}:00`,
       "Task" : modalId,
       "Date_field" : date
       
@@ -1529,7 +1886,7 @@ function fetchLatestRecordAndUpload(modalId, fileInput) {
   ZOHO.CREATOR.API.getAllRecords(config).then(function(response) {
       if (response.code == 3000 && response.data.length > 0) {
           var latestRecordID = response.data[0].ID; // Get latest record ID
-          console.log("Latest Record ID:", latestRecordID);
+          // console.log("Latest Record ID:", latestRecordID);
           uploadFile(modalId, latestRecordID, fileInput); // Upload file to this record
       } else {
           console.log("No records found or API error:", response.message);
@@ -1542,8 +1899,8 @@ function fetchLatestRecordAndUpload(modalId, fileInput) {
 
 function uploadFile(modalId, recordID, fileInput){
 
-  console.log("uploadFile function is called succesfully!!")
-  console.log(recordID, fileInput)
+  // console.log("uploadFile function is called succesfully!!")
+  // console.log(recordID, fileInput)
 
   var fileUploadConfig = {
     appName: "internal-project-management-platform",
@@ -1597,19 +1954,23 @@ function addNewChecklistItem(modalId, checklist){
 
 function addChecklistTemplate(element, tem, t, modalId ){
 
-  console.log("Gommala..", tem, t, modalId)
+  // console.log("Gommala..", tem, t, modalId)
 
-  const temID = t.map(tt => tt.Checklist_Template.ID).filter(f => t.Checklist_Template.ID === f)  
 
-  console.log("temID", temID)
+  const temID = [...new Set(t.filter(srch => srch.Checklist_Template.display_value === tem).map(m => m.Checklist_Template.ID))][0];
+
+
+  // console.log("temID", temID)
 
   const templateArray = t.filter(template => template.Checklist_Template.display_value === tem).map(template => template.Item_Name)
   const refreshWait = templateArray.length
 
   if (element.checked) {
   
-    console.log("templateArray", templateArray)
-    checkListTemplateStore(element ,modalId, tem);
+    // console.log("templateArray", templateArray)
+    checkListTemplateStore(element ,modalId, tem, temID);
+
+    // let completed = 0;
     
     templateArray.forEach((i,index) => {
 
@@ -1633,13 +1994,17 @@ function addChecklistTemplate(element, tem, t, modalId ){
         } else {
           console.log("Error adding Checklist:", checklistAddResponse);
         }
+        // if (completed === templateArray.length) {
+        //   refreshChecklist(modalId);
+        // }
       });
 
     }) 
   } else {
 
-    checkListTemplateStore(element ,modalId, tem);
+    checkListTemplateStore(element ,modalId, tem, temID);
 
+    // let completed = 0;
     templateArray.forEach((i,index) => {
 
       var config = { 
@@ -1656,6 +2021,9 @@ function addChecklistTemplate(element, tem, t, modalId ){
         } else {
           console.log("Error Deleting Checklist:", response);
         }
+        // if (completed === templateArray.length) {
+        //   refreshChecklist(modalId);
+        // }
       });
 
 
@@ -1667,16 +2035,16 @@ function addChecklistTemplate(element, tem, t, modalId ){
 
 
 
-function checkListTemplateStore(element, modalId, tem){
+function checkListTemplateStore(element, modalId, tem, temID){
 
   if (element.checked){
 
     formData = {
       "data" : {
-        "Checklist_Template": tem ,
+        "Checklist_Template": temID,
         "Task": modalId
       }
-  }
+     }
      
     var config = { 
       appName: "internal-project-management-platform",
@@ -1687,101 +2055,143 @@ function checkListTemplateStore(element, modalId, tem){
     ZOHO.CREATOR.API.addRecord(config).then(function(response){
       if (response.code == 3000) {
         console.log("Checklist Template added successfully");
-        index+1 === refreshWait ? (refreshChecklist(modalId)) : (console.log("Looping for", index+1, "times"))
+        // index+1 === refreshWait ? (refreshChecklist(modalId)) : (console.log("Looping for", index+1, "times"))
 
       } else {
         console.log("Error Adding Checklist Template:", response);
       }
     });
 
-
-
   } 
-  // else {
- 
- 
-  // }
+  else {
+
+    var config = { 
+      appName: "internal-project-management-platform",
+      reportName : "All_Task_Checklists", 
+      criteria : `(Checklist_Template == "${temID}" && Task == "${modalId}")`
+    }
+    ZOHO.CREATOR.API.deleteRecord(config).then(function(response){
+     
+      if (response.code == 3000) {
+        console.log("Checklist Template Deleted successfully");
+       
+
+      } else {
+        console.log("Error Deleting Checklist Template:", response);
+      }
+
+    });
+
+  }
  
  }
 
+ window.addRibbon = async function(modalId){
+
+  let RIBBONARR = []
+  
+  const subTaskConfig = {
+    appName: "internal-project-management-platform",
+    reportName: "Subtask_Report"
+  };
+
+  try {
+    const res =await ZOHO.CREATOR.API.getAllRecords(subTaskConfig);
+    res.data.forEach(subtask => {
+
+      if(modalId == subtask.Task.ID){
+        RIBBONARR.push(subtask.Status)
+      }
+    });
+    
+  } catch(error){
+    console.error("Error fetching the added checklist template:", error)
+    
+  }
+
+  //checklist
+
+  let RIBBONARR2 = []
+
+   const checklistConfig = {
+          appName: "internal-project-management-platform",
+          reportName: "All_Checklists"
+  };
 
 
+  try {
+    const res =await ZOHO.CREATOR.API.getAllRecords(checklistConfig);
+    res.data.forEach(check => {
 
+      if(modalId == check.Task.ID){
+        RIBBONARR2.push(check.Done)
+      }
+    });
+    
+  } catch(error){
+    console.error("Error fetching the added checklist template:", error)
+    
+  }
 
+  if (RIBBONARR.length > 0 && RIBBONARR2.length > 0 && RIBBONARR.every(r => r === "Completed") && RIBBONARR2.every(r => r === "true")) {
+    
+    document.getElementById(`ribbonn-${modalId}`).classList.remove("d-none");
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// function checkListTemplateStore(element, modalId){
-
-//  if (element.checked){
-//     checklistDatas = {
-//       "data" : {
-//         "Checklist_Template": true,
-        
-//       }
-//     }
-
-//     var checklistAddTemplateConfig = {
-//       appName: "internal-project-management-platform",
-//       reportName: "Task_Report",
-//       id : modalId,
-//       data : checklistDatas
-//     }
-
-//     ZOHO.CREATOR.API.updateRecord(checklistAddTemplateConfig).then(function(res) {
-//       if (res.code == 3000) {
-//         console.log("Checklist Template Stored successfully");
-//         // refreshChecklist(modalId);
-//       } else {
-//         console.log("Error adding Checklist:", res);
-//       }
-//     });
-//  } else {
-
-//   checklistDatas = {
-//     "data" : {
-//       "Checklist_Template": false,
+    formData = {
       
-//     }
-//   }
+        "data" : {
+          "Task_Status": "Completed",
+        }
+    }
 
-//   var checklistAddTemplateConfig = {
-//     appName: "internal-project-management-platform",
-//     reportName: "Task_Report",
-//     id : modalId,
-//     data : checklistDatas
-//   }
+    var config = { 
+        appName : "internal-project-management-platform",
+        reportName : "Task_Report", 
+        id : modalId,
+        data : formData 
+    } 
+    ZOHO.CREATOR.API.updateRecord(config).then(function(response){
+        if(response.code == 3000){
+            // console.log("Record updated successfully");
+        } 
+    });
 
-//   ZOHO.CREATOR.API.updateRecord(checklistAddTemplateConfig).then(function(res) {
-//     if (res.code == 3000) {
-//       console.log("Checklist Template Stored successfully");
-//       // refreshChecklist(modalId);
-//     } else {
-//       console.log("Error adding Checklist:", res);
-//     }
-//   });
+  }
 
+}
 
-//  }
+function refreshMacha(){
 
-// }
+  const allModalIdArr = JSON.parse(sessionStorage.getItem("allModalIdArr") || [])
+  const isRunning = localStorage.getItem("isRunning")
+  const allModalIdArr2 = [...new Set(allModalIdArr)];
+
+  // console.log(allModalIdArr2)
+
+  allModalIdArr2.forEach(m => {
+    refreshSubtasks(m)
+    refreshLogs(m)
+    refreshFiles(m)
+    refreshNotes(m)
+    refreshChecklist(m)
+    addRibbon(m)
+
+    }
+  )
+}
+
+setTimeout(function() {
+  refreshMacha()
+}, 2000); 
+
+function reloadPage() {
+  document.getElementById('loader').style.display = 'block';
+  document.getElementById('ScreenFade').style.display = 'none';
+  
+
+  setTimeout(function() {
+    location.reload();
+  }, 1000); 
+
+  
+}
