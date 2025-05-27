@@ -173,8 +173,26 @@
 </div> -->
 
 
-<div class="container calendar-container m-2 ms-4">
+<div class="container calendar-container m-2 ms-4 " style="position: relative;">
+
   <div id="ec"></div>
+  <div id="loader"  class="position-absolute" style="top: 200px; left: 700px; z-index: 100;"></div>
+
+ <div id="ScreenFade" class="position-absolute" style="top: 0; z-index: 100;">
+  <br><br>
+      
+      
+        <div class="mx-auto mt-5 p-5 rounded border" style="width: 22rem; height: max-content; background-color: #fff;">
+          <div class="">
+            <p>
+              Wanna Save Changes?
+            </p>
+            <button style="background-color: indigo; color: white; border-radius: 10px;" type="button" class="btn" onclick="reloadPage()"><i class="bi bi-floppy-fill"></i> Save changes</button>
+          </div>
+        </div>
+      
+ 
+ </div>
 </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@event-calendar/build@2.3.0/event-calendar.min.js"></script>
@@ -185,10 +203,10 @@
   <script src="https://unpkg.com/@fullcalendar/core/main.min.js"></script>
 <!-- partial -->
   <script  src="./index.js"></script>
-  <!-- <script src="index2.js"></script> -->
-   <!-- <script src="abdul.js"></script> -->
 
-   <!-- <input type="date" name="" id=""> -->
+  <script>
+    
+  </script>
 
 </body>
 </html>
