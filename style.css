@@ -42,6 +42,7 @@ textarea {
   /* border-left: 5px solid primary; */
 
 }
+
  /* .green:hover, .pink:hover, .blue:hover, .grey:hover{
   transform: scale(1.5);
   height: 220px !important;
@@ -204,10 +205,11 @@ textarea {
     50% { opacity: 0.5; }
     100% { opacity: 1; }
 }
+
 .table-container { display: flex; justify-content: space-between; gap: 20px; }
 .table-card { flex: 1; border-radius: 8px; overflow: hidden; }
-.task-card-header { background-color: #0056b3; color: white; padding: 15px; border-top-left-radius: 8px; border-top-right-radius: 8px; position: relative; }
-.timer-container { position: absolute; top: 10px; right: 15px; display: flex; align-items: center; }
+.task-card-header {  color: white; border-top-left-radius: 8px; border-top-right-radius: 8px; position: relative; }
+.timer-container { position: absolute; top: 5px; right: 15px; display: flex; align-items: center; }
 .timer-button { background: none; border: none; font-size: 1.8rem; color: white; cursor: pointer; }
 .nav-tabs .nav-link { font-weight: bold; }
 .nav-tabs .nav-link.active { background-color: #0056b3; color: white; border-radius: 5px; }
@@ -223,6 +225,7 @@ button.nav-link.active{
   border: 1px solid;
   scale: 1.1;
   box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  
 }
 
 button.nav-link {
@@ -230,8 +233,6 @@ button.nav-link {
   margin-left: 10px;
 
 }
-
-
 
 button.nav-link:hover,
 button.nav-link:focus {
@@ -245,3 +246,58 @@ button.nav-link:focus {
   scrollbar-width: thin;
 
 }
+
+/* Ribbon  */
+
+.ribbon {
+  font-size: 28px;
+  font-weight: bold;
+  color: #fff;
+  z-index: 1000;
+  /* opacity: 0.9; */
+}
+.ribbon {
+  --f: .5em; /* control the folded part */
+  
+  position: absolute;
+  top: 0;
+  left: 0;
+  line-height: 1.8;
+  padding-inline: 1lh;
+  padding-bottom: var(--f);
+  border-image: conic-gradient(#0008 0 0) 51%/var(--f);
+  clip-path: polygon(
+    100% calc(100% - var(--f)),100% 100%,calc(100% - var(--f)) calc(100% - var(--f)),var(--f) calc(100% - var(--f)), 0 100%,0 calc(100% - var(--f)),999px calc(100% - var(--f) - 999px),calc(100% - 999px) calc(100% - var(--f) - 999px));
+  transform: translate(calc((cos(45deg) - 1)*100%), -100%) rotate(-45deg);
+  transform-origin: 100% 100%;
+  background-color: #F07818; /* the main color  */
+}
+
+/* loading...  */
+
+
+    #loader {
+      display: none;
+      margin: 20px auto;
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid indigo;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #ScreenFade{
+      display: none;
+      background-color: rgba(0, 0, 0, 0.588);
+      text-align: center;
+      height: 100vh;
+      width: 100vw;
+      
+    }
